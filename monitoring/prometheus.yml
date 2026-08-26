@@ -1,70 +1,53 @@
-# [PÉDAGOGIE] ============================================================================
-# [PÉDAGOGIE] FICHIER — monitoring/prometheus.yml
-# [PÉDAGOGIE] MODULE  — M28 puis M33–M34 — collecte de métriques
-# [PÉDAGOGIE] RÔLE    — Configurer le modèle pull de Prometheus et rendre les cibles de
-# [PÉDAGOGIE]           supervision explicites.
-# [PÉDAGOGIE] THÉORIE — une métrique est échantillonnée ; elle ne remplace ni les logs ni les
-# [PÉDAGOGIE]           traces
-# [PÉDAGOGIE]           • scrape_interval règle la fréquence d'observation, pas la fréquence des
-# [PÉDAGOGIE]             événements
-# [PÉDAGOGIE]           • les labels doivent rester peu nombreux pour maîtriser la cardinalité
-# [PÉDAGOGIE] À VOIR  — La page Targets de Prometheus doit montrer une cible UP et expliquer toute
-# [PÉDAGOGIE]           cible DOWN.
-# [PÉDAGOGIE] PIÈGE   — Une cible préconfigurée peut être volontairement inactive ; ne pas la
-# [PÉDAGOGIE]           confondre avec une panne avérée.
-# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
-# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
-# [PÉDAGOGIE] ============================================================================
-
 # =============================================================================
-#  FICHIER : monitoring/prometheus.yml
-#  RÔLE    : configuration de Prometheus, l'outil qui SURVEILLE l'application en
-#            COLLECTANT régulièrement ses "métriques" (nombre de requêtes, temps
-#            de réponse, erreurs, etc.). C'est la base du monitoring/observabilité.
-#  MODULE  : 33-34 (monitoring / Prometheus).
+# FICHIER : monitoring/prometheus.yml
+# ROLE    : dire a Prometheus QUOI collecter, OU, et COMMENT s'authentifier.
+# -----------------------------------------------------------------------------
+# POURQUOI UNE AUTHENTIFICATION ICI ?
 #
-#  COMMENT MARCHE PROMETHEUS (modèle "PULL") :
-#    - Prometheus ne PAS attend qu'on lui envoie des données : c'est LUI qui va les
-#      CHERCHER ("to scrape" = aspirer). À intervalle régulier, il appelle une URL
-#      spéciale de l'application (souvent /metrics) et lit les chiffres exposés.
-#    - C'est l'inverse d'un modèle "PUSH" où l'appli enverrait ses métriques.
-#      Avantage du PULL : Prometheus contrôle le rythme et sait si une cible ne
-#      répond plus (= panne détectée).
+# Le durcissement M26 a ferme /metrics derriere une cle API. Prometheus a donc
+# besoin de s'authentifier, sinon il recoit 401 et la cible passe « down ».
 #
-#  ⚠️ RAPPEL YAML : l'indentation (espaces) structure le fichier. On n'y touche
-#     pas. Ici on n'ajoute QUE des commentaires '#'.
+# CONTRAINTE A CONNAITRE : Prometheus ne sait PAS envoyer un en-tete arbitraire.
+# Sa configuration n'expose que le bloc `authorization`, qui positionne l'en-tete
+# `Authorization`. Impossible d'envoyer `X-API-Key` directement — la demande a
+# ete formulee des 2016 et refusee plusieurs fois par le projet.
+#
+# C'est pourquoi `require_api_key` accepte DEUX en-tetes pour la meme cle :
+#   X-API-Key: <cle>              -> clients applicatifs
+#   Authorization: Bearer <cle>   -> Prometheus
+#
+# LECON A TIRER EN SEANCE : un durcissement a un cout d'integration. Fermer
+# /metrics etait correct du point de vue securite, et cassait le monitoring.
+# La bonne reponse n'est ni de rouvrir en silence, ni de renoncer a surveiller.
 # =============================================================================
 
-# [PÉDAGOGIE] CLÉ `global` — ce champ déclaratif participe au contrat de configuration.
-global:                   # 'global' = réglages par défaut qui s'appliquent à TOUT Prometheus.
-  # [PÉDAGOGIE] CLÉ `scrape_interval` — ce champ déclaratif participe au contrat de configuration.
-  scrape_interval: 15s    # Fréquence de collecte par défaut : Prometheus va "aspirer" les
-                          #   métriques toutes les 15 secondes. Plus court = plus précis mais
-                          #   plus de charge ; plus long = moins fin mais plus léger.
+global:
+  # Frequence de collecte par defaut : Prometheus interroge chaque cible
+  # toutes les 15 secondes.
+  scrape_interval: 15s
 
-# [PÉDAGOGIE] COLLECTE — chaque job regroupe des cibles interrogées selon la même politique.
-scrape_configs:           # 'scrape_configs' = la LISTE des cibles à surveiller (les "jobs").
-  # [PÉDAGOGIE] CLÉ `job_name` — ce champ déclaratif participe au contrat de configuration.
-  - job_name: indusense-api     # Nom logique de ce job de collecte (sert d'étiquette dans Prometheus).
-    # [PÉDAGOGIE] CLÉ `metrics_path` — ce champ déclaratif participe au contrat de configuration.
-    metrics_path: /metrics      # CHEMIN de l'URL où l'appli expose ses métriques (ici .../metrics).
-                          #   Prometheus appellera donc http://<cible>/metrics pour lire les chiffres.
-    # [PÉDAGOGIE] DÉCOUVERTE — la liste des cibles est ici déclarée explicitement.
-    static_configs:             # Cibles définies "en dur" (liste fixe d'adresses, sans découverte auto).
-      # [PÉDAGOGIE] CIBLES — utiliser le nom DNS du service depuis le réseau Docker, pas
-      # [PÉDAGOGIE] localhost.
-      - targets: ["api:8000"]   # CIBLE à interroger : le service 'api' sur le port 8000.
-                          #   'api' est résolu par le DNS interne de Docker Compose (nom du service)
-                          #   -> Prometheus scrape http://api:8000/metrics. C'est le modèle PULL en action.
+scrape_configs:
+  # --- L'API InduSense ------------------------------------------------------
+  - job_name: indusense-api
+    metrics_path: /metrics
 
-  # --- Job ajouté (TP drift m31) : l'exporteur tourne SUR LE POSTE (pas dans
-  # Docker) → on le joint via host.docker.internal (Docker Desktop Win/macOS ;
-  # sous Linux, ajouter extra_hosts: ["host.docker.internal:host-gateway"] au
-  # service prometheus du docker-compose).
-  # [PÉDAGOGIE] CLÉ `job_name` — ce champ déclaratif participe au contrat de configuration.
-  - job_name: indusense-drift
-    # [PÉDAGOGIE] DÉCOUVERTE — la liste des cibles est ici déclarée explicitement.
+    # `authorization` positionne l'en-tete Authorization sur CHAQUE requete.
+    # `type: Bearer` est la valeur par defaut, ecrite ici pour etre explicite.
+    #
+    # `credentials_file` plutot que `credentials` : la cle n'apparait JAMAIS
+    # dans ce fichier, qui est versionne. Le fichier pointe est monte par
+    # docker-compose depuis un chemin ignore par Git.
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/api_key
+
     static_configs:
-      # [PÉDAGOGIE] CIBLES — utiliser le nom DNS du service depuis le réseau Docker, pas
-      # [PÉDAGOGIE] localhost.
+      - targets: ["api:8000"]
+
+  # --- Exporteur de derive --------------------------------------------------
+  # Cette cible arrive plus tard dans le parcours (M29). Tant que l'exporteur
+  # n'est pas lance, elle reste « down » : c'est ATTENDU, pas un incident.
+  # Le smoke test ne verifie que le job `indusense-api` pour cette raison.
+  - job_name: indusense-drift
+    static_configs:
       - targets: ["host.docker.internal:9109"]

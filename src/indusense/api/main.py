@@ -51,6 +51,8 @@
 # [PÉDAGOGIE] DÉPENDANCE — __future__ : apporte une dépendance explicitement visible au lecteur.
 from __future__ import annotations
 
+import secrets
+
 # `uuid` : module standard pour générer des identifiants UNIQUES et aléatoires.
 # On l'utilise pour donner un identifiant à chaque requête (traçabilité des logs).
 import uuid
@@ -151,16 +153,17 @@ async def lifespan(app: FastAPI):
         # On trace dans les logs que tout s'est bien passé.
         logger.info("Modèle chargé")
     except (FileNotFoundError, store.ModelIntegrityError) as exc:
-        # Le service DEMARRE quand meme : /health repondra 200 (le process vit),
-        # /ready repondra 503 (le modele n'est pas la). C'est exactement la
-        # distinction liveness / readiness posee au jalon 03. Un service qui
-        # refuse de demarrer ne peut meme pas signaler pourquoi.
-        logger.warning("Modele non charge : {}", exc)
+        # Deux situations, un seul cas metier : PAS DE MODELE CHARGEABLE.
+        #   - FileNotFoundError    : l'artefact n'existe pas (pas encore entraine).
+        #   - ModelIntegrityError  : il existe mais n'est pas verifiable.
+        # Dans les deux cas on ne fait PAS planter le serveur : il démarre quand
+        # même, sans modèle. On laisse `_BUNDLE` à None...
         store._BUNDLE = None
         # ...et on prévient via un avertissement. Conséquence : /ready répondra
         # 503 (pas prêt) tant qu'aucun modèle n'est disponible. Démarrer malgré
-        # tout permet par exemple aux sondes /health de fonctionner.
-        logger.warning("Aucun modèle — /ready renverra 503", exc)
+        # tout permet par exemple aux sondes /health de fonctionner — et surtout
+        # de DIRE pourquoi le service n'est pas pret. Un process mort ne le peut pas.
+        logger.warning("Aucun modèle utilisable ({}) — /ready renverra 503", exc)
     # `yield` = « le démarrage est terminé, l'application tourne maintenant ».
     # Tout ce qui serait écrit APRÈS ce yield s'exécuterait à l'arrêt (nettoyage,
     # fermeture de connexions…). Ici on n'a rien de spécial à faire à l'arrêt.
@@ -254,14 +257,32 @@ async def add_request_id(
 # [PÉDAGOGIE] testable et réutilisable.
 # [PÉDAGOGIE] CONTRAT — entrées : x_api_key ; preuve : l'appelant doit pouvoir vérifier la sortie
 # [PÉDAGOGIE] ou l'effet de bord annoncé.
-def require_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")) -> None:
+def require_api_key(
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    authorization: str | None = Header(None, alias="Authorization"),
+) -> None:
     # Clé absente OU invalide -> 401 (et non 422) : statut sémantiquement correct pour l'auth.
     # Détail pédagogique : on choisit 401 (« Unauthorized » = non authentifié)
     # plutôt que 422 (« données invalides »), car ici le problème n'est pas la
     # FORME de la donnée mais le fait que l'appelant n'a pas prouvé son identité.
     # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
     # [PÉDAGOGIE] cas vrai et le cas faux.
-    if x_api_key is None or x_api_key != settings.api_key:
+    # DEUX en-tetes acceptes pour une seule et meme cle :
+    #   X-API-Key: <cle>            -> clients applicatifs
+    #   Authorization: Bearer <cle> -> Prometheus
+    # Prometheus ne sait PAS envoyer d'en-tete arbitraire : sa configuration
+    # n'expose que `authorization`, qui positionne `Authorization`. Sans cette
+    # seconde voie, fermer /metrics rendrait le scraping impossible.
+    soumise = x_api_key
+    if soumise is None and authorization is not None:
+        schema, _, valeur = authorization.partition(" ")
+        if schema.lower() == "bearer":
+            soumise = valeur.strip()
+
+    # `secrets.compare_digest` : comparaison a temps constant. Un `!=` classique
+    # s'arrete au premier caractere different, ce qui laisse fuir la cle par
+    # mesure de latence. Le cout est nul.
+    if soumise is None or not secrets.compare_digest(soumise, settings.api_key):
         # On compare la clé reçue à la clé attendue (stockée dans la config). Si
         # elle manque ou ne correspond pas, on refuse l'accès avec un message clair.
         # [PÉDAGOGIE] FAIL FAST — refuser ici empêche un état invalide de contaminer les étapes

@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -149,7 +150,12 @@ def build_dataset(
         on="timestamp",
         by="machine",
         direction="nearest",
-        tolerance=pd.Timedelta(minutes=tolerance_minutes),
+        # `datetime.timedelta` de la bibliotheque standard, PAS pd.Timedelta :
+        # avec numpy >= 2.5, `pd.Timedelta(minutes=n)` comme `pd.Timedelta("90min")`
+        # passent par un timedelta64 d'unite « generic », deprecie et bientot
+        # erreur. La stdlib n'emprunte jamais ce chemin, et pandas l'accepte
+        # partout ou il attend un Timedelta.
+        tolerance=timedelta(minutes=tolerance_minutes),
     )
     before = len(sensors)
     sensors = sensors.dropna(subset=["pressure_bar"])
@@ -166,7 +172,8 @@ def build_dataset(
 
     sensors = sensors.sort_values(["machine", "timestamp"]).reset_index(drop=True)
     sensors["panne"] = 0
-    window = pd.Timedelta(hours=window_hours)
+    # Meme raison que ci-dessus : stdlib, pas pd.Timedelta.
+    window = timedelta(hours=window_hours)
     # [PÉDAGOGIE] ITÉRATION — appliquer la même règle à chaque élément permet de raisonner sur un
     # [PÉDAGOGIE] invariant stable.
     for row in inc.itertuples():

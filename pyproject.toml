@@ -228,3 +228,30 @@ testpaths = ["tests"]
 # Ajoute "src" au chemin d'import Python => les tests trouvent le code source.
 # [PÉDAGOGIE] RÉGLAGE `pythonpath` — valeur déclarative lue par l'outil associé à cette section.
 pythonpath = ["src"]
+
+# --- Marqueurs personnalises -------------------------------------------------
+# Sans cette declaration, pytest emet un PytestUnknownMarkWarning par test
+# marque. La declarer permet aussi de filtrer :
+#   uv run pytest -m "not smoke" -q     -> suite rapide, sans Docker
+#   uv run pytest -m smoke -q           -> apres docker compose up -d
+# [PÉDAGOGIE] RÉGLAGE `markers` — un marqueur declare est un contrat ; un marqueur inconnu est
+# [PÉDAGOGIE] presque toujours une faute de frappe silencieuse.
+markers = [
+    "smoke: necessite une stack docker compose demarree (reseau reel)",
+]
+
+# --- Traitement des avertissements -------------------------------------------
+# `error` transforme tout avertissement en ECHEC : un warning ignore aujourd'hui
+# devient une rupture a la prochaine montee de version. On ne tolere ensuite que
+# des exceptions NOMMEES et JUSTIFIEES, jamais un silence global.
+# [PÉDAGOGIE] RÉGLAGE `filterwarnings` — chaque ligne d'exception doit citer sa raison et sa
+# [PÉDAGOGIE] condition de retrait. Une exception sans date de peremption devient permanente.
+filterwarnings = [
+    "error",
+    # Starlette signale que son TestClient utilisera httpx2. Le correctif
+    # appartient a starlette/fastapi, pas a nous : rien a corriger cote projet.
+    # A RETIRER quand fastapi aura migre vers httpx2.
+    # La classe est StarletteDeprecationWarning, PAS DeprecationWarning : un
+    # filtre sur la classe generique ne l'attraperait pas.
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
+]

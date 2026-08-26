@@ -64,3 +64,4 @@ build/
 mlruns/
 # Docker
 .buildx-cache*
+monitoring/api_key
