@@ -1,0 +1,36 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — monitoring/grafana/provisioning/datasources/datasource.yml
+# [PÉDAGOGIE] MODULE  — M28 puis M33–M34 — visualisation et provisioning déclaratif
+# [PÉDAGOGIE] RÔLE    — Rendre la source de données et les tableaux de bord reproductibles sans
+# [PÉDAGOGIE]           clic manuel.
+# [PÉDAGOGIE] THÉORIE — Grafana interroge une source ; il ne stocke pas les métriques de
+# [PÉDAGOGIE]           Prometheus
+# [PÉDAGOGIE]           • le provisioning versionné permet de reconstruire le même poste
+# [PÉDAGOGIE]             d'observation
+# [PÉDAGOGIE]           • un tableau de bord doit relier signal technique, seuil et décision
+# [PÉDAGOGIE]             opératoire
+# [PÉDAGOGIE] À VOIR  — Au démarrage, Grafana doit retrouver automatiquement la datasource et les
+# [PÉDAGOGIE]           dashboards déclarés.
+# [PÉDAGOGIE] PIÈGE   — Un graphique séduisant sans unité, fenêtre ni seuil explicite peut
+# [PÉDAGOGIE]           conduire à une mauvaise décision.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+# Provisioning Grafana : configure AUTOMATIQUEMENT la source de donnees au demarrage.
+# Grafana lit ce fichier (monte via docker-compose) et n'a donc rien a configurer a la main.
+# [PÉDAGOGIE] FORMAT — versionne le contrat de provisioning interprété par Grafana.
+apiVersion: 1
+# [PÉDAGOGIE] PROVISIONING — la source Grafana est reconstruite automatiquement au démarrage.
+datasources:
+  # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
+  # [PÉDAGOGIE] l'interface.
+  - name: Prometheus          # nom affiche dans Grafana
+    # [PÉDAGOGIE] CLÉ `type` — ce champ déclaratif participe au contrat de configuration.
+    type: prometheus          # type de source
+    # [PÉDAGOGIE] CLÉ `access` — ce champ déclaratif participe au contrat de configuration.
+    access: proxy             # Grafana interroge Prometheus cote serveur
+    # [PÉDAGOGIE] CLÉ `url` — ce champ déclaratif participe au contrat de configuration.
+    url: http://prometheus:9090   # adresse du service 'prometheus' (DNS interne Compose)
+    # [PÉDAGOGIE] CLÉ `isDefault` — ce champ déclaratif participe au contrat de configuration.
+    isDefault: true           # source par defaut des nouveaux panels
