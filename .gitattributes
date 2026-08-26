@@ -1,0 +1,49 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — .gitattributes
+# [PÉDAGOGIE] MODULE  — M23–M27 — hygiène des artefacts et reproductibilité
+# [PÉDAGOGIE] RÔLE    — Définir explicitement ce qui entre dans l'historique ou dans le contexte
+# [PÉDAGOGIE]           de construction.
+# [PÉDAGOGIE] THÉORIE — les sources et manifestes sont versionnés ; caches, secrets et sorties
+# [PÉDAGOGIE]           générées ne le sont pas
+# [PÉDAGOGIE]           • réduire le contexte Docker accélère le build et limite l'exposition
+# [PÉDAGOGIE]             accidentelle
+# [PÉDAGOGIE]           • des fins de ligne cohérentes évitent les différences artificielles entre
+# [PÉDAGOGIE]             systèmes
+# [PÉDAGOGIE] À VOIR  — git status et le contexte de build doivent rester courts, explicables et
+# [PÉDAGOGIE]           sans donnée sensible.
+# [PÉDAGOGIE] PIÈGE   — Ignorer un artefact ne l'efface pas de l'historique s'il a déjà été
+# [PÉDAGOGIE]           commité.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+# [PÉDAGOGIE] ATTRIBUT — normalise le traitement Git de ce motif entre Windows, macOS et Linux.
+*.sh text eol=lf
+# [PÉDAGOGIE] ATTRIBUT — normalise le traitement Git de ce motif entre Windows, macOS et Linux.
+*.ps1 text eol=crlf
+# [PÉDAGOGIE] ATTRIBUT — normalise le traitement Git de ce motif entre Windows, macOS et Linux.
+*.py text eol=lf
+# [PÉDAGOGIE] ATTRIBUT — normalise le traitement Git de ce motif entre Windows, macOS et Linux.
+*.yml text eol=lf
+# [PÉDAGOGIE] ATTRIBUT — normalise le traitement Git de ce motif entre Windows, macOS et Linux.
+*.yaml text eol=lf
+# [PÉDAGOGIE] ATTRIBUT — normalise le traitement Git de ce motif entre Windows, macOS et Linux.
+*.md text eol=lf
+# HRA
+*.md 		text eol=lf
+*.dvc      	text eol=lf
+dvc.lock   	text eol=lf
+dvc.yaml   	text eol=lf
+.dvcignore 	text eol=lf
+*.joblib				filter=lfs diff=lfs merge=lfs -text
+# MLFlow
+*.db 					filter=lfs diff=lfs merge=lfs -text
+# csv
+data/**/*.csv 				filter=lfs diff=lfs merge=lfs -text
+artifacts/**/*.csv	 		filter=lfs diff=lfs merge=lfs -text
+# DVC
+data/**/*.dvc 				filter=lfs diff=lfs merge=lfs -text
+artifacts/**/*.dvc	 		filter=lfs diff=lfs merge=lfs -text
+# joblib
+artifacts/**/*.joblib 			filter=lfs diff=lfs merge=lfs -text
+artifacts/models/rf.joblib 		filter=lfs diff=lfs merge=lfs -text
