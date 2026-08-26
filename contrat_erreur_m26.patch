@@ -1,0 +1,325 @@
+diff --git a/src/indusense/api/main.py b/src/indusense/api/main.py
+index 5b85e2c..a3bd918 100644
+--- a/src/indusense/api/main.py
++++ b/src/indusense/api/main.py
+@@ -74,6 +74,7 @@ import pandas as pd
+ #   - `UploadFile`    : représente un fichier téléversé (pour /predict-image).
+ #   - `status`        : constantes nommées des codes HTTP (ex. HTTP_401_...).
+ from fastapi import Depends, FastAPI, Header, HTTPException, Request, UploadFile, status
++from fastapi.exception_handlers import http_exception_handler
+ 
+ # `loguru.logger` : une bibliothèque de JOURNALISATION (logs) très simple et
+ # agréable. On l'utilise pour tracer ce qui se passe (modèle chargé, etc.) et,
+@@ -93,19 +94,20 @@ from prometheus_fastapi_instrumentator import Instrumentator
+ # modifie bien la variable du module partagé (et non une copie locale).
+ import indusense.api.model_store as store
+ 
+-# On importe aussi directement la classe `ModelBundle` (pour annoter les types)
+-# et la fonction `get_model_bundle` (pour l'injecter via Depends).
+-from indusense.api.model_store import ModelBundle, get_model_bundle
+-
+-# Les schémas Pydantic définissant le contrat d'entrée/sortie de /predict-tabular.
+-from indusense.api.schemas import PredictionResponse, TabularPredictionRequest
+-
+ # Les garde-fous de sécurité définis dans security.py :
+ #   - `limit_body_size` : middleware anti-payload-géant (413).
+ #   - `rate_limit`      : dépendance anti-flood (429).
+ #   ⚠️ On branche `rate_limit_dependency` (et NON `rate_limit`) : voir sa
+ #      docstring — brancher `rate_limit` directement exposerait `limit`/`window`
+ #      en paramètres de requête (`?limit=100000` contournerait le garde-fou).
++from indusense.api.errors import PREDICTION_RESPONSES, READINESS_RESPONSES
++
++# On importe aussi directement la classe `ModelBundle` (pour annoter les types)
++# et la fonction `get_model_bundle` (pour l'injecter via Depends).
++from indusense.api.model_store import ModelBundle, get_model_bundle
++
++# Les schémas Pydantic définissant le contrat d'entrée/sortie de /predict-tabular.
++from indusense.api.schemas import PredictionResponse, TabularPredictionRequest
+ from indusense.api.security import limit_body_size, rate_limit_dependency
+ 
+ # La configuration centrale du projet (chemins, clé API, seuil de décision…).
+@@ -184,7 +186,9 @@ app = FastAPI(title="InduSense API", version="0.1.0", lifespan=lifespan)
+ #     métriques sur la route GET /metrics. `include_in_schema=False` cache cette
+ #     route technique de la documentation Swagger (elle ne concerne pas les
+ #     utilisateurs « métier », seulement les outils de supervision).
+-Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
++# CONTROLE 5 — instrumentation branchee ici, EXPOSITION repoussee apres la
++# definition de require_api_key (voir fin de fichier).
++_instrumentator = Instrumentator().instrument(app)
+ 
+ 
+ # -----------------------------------------------------------------------------
+@@ -196,6 +200,12 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_sch
+ # [PÉDAGOGIE] testable et réutilisable.
+ # [PÉDAGOGIE] CONTRAT — entrées : request, call_next ; preuve : l'appelant doit pouvoir vérifier
+ # [PÉDAGOGIE] la sortie ou l'effet de bord annoncé.
++# ORDRE CRITIQUE — Starlette execute le DERNIER middleware enregistre en
++# PREMIER. limit_body_size est donc enregistre AVANT add_request_id, pour que
++# add_request_id soit le plus externe et pose X-Request-ID meme sur un 413 ou
++# un 400 emis par court-circuit.
++app.middleware("http")(limit_body_size)
++
+ @app.middleware("http")
+ async def add_request_id(request: Request, call_next):
+     # On cherche un identifiant fourni par le client dans l'en-tête "X-Request-ID".
+@@ -225,7 +235,6 @@ async def add_request_id(request: Request, call_next):
+ # Enregistré en dernier, ce garde-fou devient la couche HTTP la plus externe.
+ # Il protège donc aussi les middlewares d'observabilité contre les en-têtes de
+ # taille malformés, puis laisse passer les requêtes valides vers la chaîne.
+-app.middleware("http")(limit_body_size)
+ 
+ 
+ # -----------------------------------------------------------------------------
+@@ -266,6 +275,21 @@ def require_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")) ->
+ # [PÉDAGOGIE] et réutilisable.
+ # [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : l'appelant doit pouvoir
+ # [PÉDAGOGIE] vérifier la sortie ou l'effet de bord annoncé.
++# CONTROLE 4 (STRIDE: Repudiation) — chaque refus laisse une trace correlee.
++# Sans cela, une campagne de reconnaissance (401 en rafale) est invisible.
++@app.exception_handler(HTTPException)
++async def journaliser_les_refus(request: Request, exc: HTTPException):
++    if exc.status_code in (401, 403, 413, 422, 429):
++        # On journalise le CONTEXTE, jamais le secret soumis : la cle envoyee
++        # par le client n'apparait nulle part ici, volontairement.
++        logger.warning(
++            "Refus {code} sur {route}",
++            code=exc.status_code,
++            route=request.url.path,
++        )
++    return await http_exception_handler(request, exc)
++
++
+ @app.get("/health")
+ def health() -> dict:
+     # On renvoie un simple dictionnaire (FastAPI le convertit en JSON, code 200).
+@@ -284,7 +308,7 @@ def health() -> dict:
+ # [PÉDAGOGIE] structure interne validée.
+ # [PÉDAGOGIE] CONTRAT — entrées : bundle ; preuve : vérifier schéma, types, ordre et erreurs
+ # [PÉDAGOGIE] explicites avant tout calcul aval.
+-@app.get("/ready")
++@app.get("/ready", responses=READINESS_RESPONSES)
+ def ready(bundle: ModelBundle | None = Depends(get_model_bundle)) -> dict:
+     # Différence clé avec /health : ici on vérifie une vraie DÉPENDANCE métier,
+     # le modèle. FastAPI nous l'injecte via `Depends(get_model_bundle)`.
+@@ -326,6 +350,8 @@ def ready(bundle: ModelBundle | None = Depends(get_model_bundle)) -> dict:
+     "/predict-tabular",
+     response_model=PredictionResponse,
+     dependencies=[Depends(require_api_key), Depends(rate_limit_dependency)],
++    # CONTROLE — publier dans OpenAPI les codes que l'API produit reellement.
++    responses=PREDICTION_RESPONSES,
+ )
+ def predict_tabular(
+     # `payload` : le corps JSON de la requête, automatiquement validé par Pydantic
+@@ -431,7 +457,11 @@ def predict_tabular(
+ # [PÉDAGOGIE] à des observations nouvelles.
+ # [PÉDAGOGIE] CONTRAT — entrées : file, bundle ; preuve : contrôler ordre des features, seuil,
+ # [PÉDAGOGIE] métriques et provenance du modèle.
+-@app.post("/predict-image", dependencies=[Depends(require_api_key), Depends(rate_limit_dependency)])
++@app.post(
++    "/predict-image",
++    dependencies=[Depends(require_api_key), Depends(rate_limit_dependency)],
++    responses=PREDICTION_RESPONSES,
++)
+ async def predict_image(
+     # `file: UploadFile` : FastAPI gère pour nous la réception d'un fichier envoyé
+     # en « multipart/form-data ». `UploadFile` donne accès au nom, au type et au
+@@ -481,3 +511,13 @@ async def predict_image(
+         "anomaly_score": 0.0,
+         "decision": "ok",
+     }
++
++
++# CONTROLE 5 (STRIDE: Information disclosure) — include_in_schema=False retire
++# /metrics de Swagger, PAS du reseau. On exige donc la cle API.
++_instrumentator.expose(
++    app,
++    endpoint="/metrics",
++    include_in_schema=False,
++    dependencies=[Depends(require_api_key)],
++)
+diff --git a/src/indusense/api/model_store.py b/src/indusense/api/model_store.py
+index da3a879..9252265 100644
+--- a/src/indusense/api/model_store.py
++++ b/src/indusense/api/model_store.py
+@@ -51,6 +51,12 @@
+ # [PÉDAGOGIE] DÉPENDANCE — __future__ : apporte une dépendance explicitement visible au lecteur.
+ from __future__ import annotations
+ 
++# On importe la fonction `load_model` du module « tabular » du projet. C'est elle
++# qui sait désérialiser le fichier `rf.joblib` (via joblib) et reconstruire
++# l'objet modèle utilisable. On réutilise cette fonction plutôt que de recoder
++# la lecture ici : chaque responsabilité reste à sa place.
++import hashlib
++
+ # `json` : module standard pour lire/écrire du JSON. Ici on l'utilise pour lire
+ # le fichier de métadonnées du modèle (`model_metadata.json`).
+ import json
+@@ -69,13 +75,39 @@ from pathlib import Path
+ # qui compte, c'est qu'il sache faire `.predict_proba(...)`.
+ from typing import Any
+ 
+-# On importe la fonction `load_model` du module « tabular » du projet. C'est elle
+-# qui sait désérialiser le fichier `rf.joblib` (via joblib) et reconstruire
+-# l'objet modèle utilisable. On réutilise cette fonction plutôt que de recoder
+-# la lecture ici : chaque responsabilité reste à sa place.
+ from indusense.models.tabular import load_model
+ 
+ 
++# CONTROLE 2 (STRIDE: Tampering) — joblib.load deserialise du pickle : lire un
++# fichier revient a EXECUTER du code. On verifie donc l'empreinte AVANT de lire.
++class ModelIntegrityError(RuntimeError):
++    """Le fichier modele ne correspond pas a l'empreinte declaree."""
++
++
++def sha256_of(path: Path) -> str:
++    """Empreinte SHA-256 d'un fichier, lue par blocs (le modele peut etre gros)."""
++    digest = hashlib.sha256()
++    with path.open("rb") as handle:
++        for bloc in iter(lambda: handle.read(65536), b""):
++            digest.update(bloc)
++    return digest.hexdigest()
++
++
++def verify_artifact(path: Path, expected_sha256: str | None) -> None:
++    """Refuse tout artefact sans empreinte declaree ou dont l'empreinte differe."""
++    if not expected_sha256:
++        raise ModelIntegrityError(
++            f"Aucune empreinte declaree pour {path.name} : chargement refuse. "
++            "Ajouter 'rf_sha256' dans model_metadata.json."
++        )
++    obtenu = sha256_of(path)
++    if obtenu != expected_sha256:
++        raise ModelIntegrityError(
++            f"Empreinte invalide pour {path.name} : "
++            f"attendu {expected_sha256[:12]}..., obtenu {obtenu[:12]}..."
++        )
++
++
+ # -----------------------------------------------------------------------------
+ #  La structure « ModelBundle » : le modèle + ses informations indispensables.
+ # -----------------------------------------------------------------------------
+@@ -146,6 +178,11 @@ def load_bundle(model_dir: Path, threshold: float) -> ModelBundle:
+     # (version du package, nom de la colonne cible, etc.).
+     meta = json.loads((model_dir / "model_metadata.json").read_text())
+ 
++    # CONTROLE 2 — verification AVANT toute deserialisation. L'ordre est le
++    # controle : verifier apres load_model ne servirait a rien, le code
++    # malveillant se serait deja execute.
++    verify_artifact(model_dir / "rf.joblib", meta.get("rf_sha256"))
++
+     # On construit et on RENVOIE le bundle, en remplissant ses quatre champs :
+     # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et son
+     # [PÉDAGOGIE] sens doivent rester stables.
+diff --git a/src/indusense/api/security.py b/src/indusense/api/security.py
+index cccdc27..b7abd43 100644
+--- a/src/indusense/api/security.py
++++ b/src/indusense/api/security.py
+@@ -111,6 +111,33 @@ MAX_BODY_BYTES = 64 * 1024
+ # [PÉDAGOGIE] disperser.
+ _hits: dict[str, deque] = defaultdict(deque)
+ 
++# CONTROLE 3 (STRIDE: DoS) — liste blanche des proxys autorises a renseigner
++# X-Forwarded-For. Vide par defaut : en developpement, l'API est appelee en
++# direct et l'en-tete doit etre ignore.
++TRUSTED_PROXIES: set[str] = set()
++
++
++def client_identity(request, trusted_proxies: set[str] | None = None) -> str:
++    """Identifie le client reel, meme derriere un reverse proxy.
++
++    Regle : on ne fait confiance a X-Forwarded-For QUE si l'appel provient
++    d'un proxy explicitement liste. Sinon n'importe qui forgerait l'en-tete
++    pour obtenir un seau de quota neuf a chaque requete.
++    """
++    proxies = TRUSTED_PROXIES if trusted_proxies is None else trusted_proxies
++    adresse_socket = request.client.host
++
++    if adresse_socket not in proxies:
++        # Appel direct, ou proxy non reconnu : l'en-tete n'est pas fiable.
++        return adresse_socket
++
++    transmis = request.headers.get("x-forwarded-for", "")
++    if not transmis:
++        return adresse_socket
++
++    # X-Forwarded-For : "client, proxy1, proxy2". Le premier est le client reel.
++    return transmis.split(",")[0].strip()
++
+ 
+ # -----------------------------------------------------------------------------
+ #  PROTECTION 1 : limiter la taille du corps de la requête (-> 413)
+@@ -187,14 +214,20 @@ async def limit_body_size(request: Request, call_next):
+ # [PÉDAGOGIE] testable et réutilisable.
+ # [PÉDAGOGIE] CONTRAT — entrées : request, limit, window ; preuve : l'appelant doit pouvoir
+ # [PÉDAGOGIE] vérifier la sortie ou l'effet de bord annoncé.
+-def rate_limit(request: Request, limit: int = 60, window: float = 60.0) -> None:
++def rate_limit(
++    request: Request,
++    limit: int = 60,
++    window: float = 60.0,
++    trusted_proxies: set[str] | None = None,
++) -> None:
+     # Paramètres avec valeurs par défaut :
+     #   - `limit`  = 60   : nombre maximum de requêtes autorisées par IP...
+     #   - `window` = 60.0 : ...sur une fenêtre de 60 secondes.
+     #   => Politique : « au plus 60 requêtes par minute et par adresse IP ».
+ 
+     # On identifie le client par son adresse IP. `request.client.host` la fournit.
+-    ip = request.client.host
++    # CONTROLE 3 — on compte par CLIENT REEL, pas par adresse de socket.
++    ip = client_identity(request, trusted_proxies)
+ 
+     # On note l'instant présent (en secondes depuis l'epoch), pour le comparer
+     # aux horodatages des requêtes précédentes.
+@@ -226,8 +259,12 @@ def rate_limit(request: Request, limit: int = 60, window: float = 60.0) -> None:
+         # comprend qu'il doit ralentir et réessayer plus tard.
+         # [PÉDAGOGIE] FAIL FAST — refuser ici empêche un état invalide de contaminer les étapes
+         # [PÉDAGOGIE] suivantes.
++        # Retry-After : le client sait QUAND rejouer au lieu de marteler.
++        # La valeur est celle de la fenetre : c'est le pire cas.
+         raise HTTPException(
+-            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Trop de requêtes"
++            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
++            detail="Trop de requêtes",
++            headers={"Retry-After": str(int(window))},
+         )
+ 
+     # SI ON ARRIVE ICI : la requête est acceptée. On enregistre son horodatage à
+diff --git a/src/indusense/config.py b/src/indusense/config.py
+index be38490..2901f48 100644
+--- a/src/indusense/config.py
++++ b/src/indusense/config.py
+@@ -31,8 +31,12 @@ from pathlib import Path  # objet « chemin de fichier » portable Windows/macOS
+ 
+ # BaseSettings : une classe spéciale qui lit automatiquement les variables
+ # d'environnement ; SettingsConfigDict : pour configurer son comportement.
++from pydantic import model_validator
+ from pydantic_settings import BaseSettings, SettingsConfigDict
+ 
++# Valeur de developpement, publique par construction : jamais acceptable en production.
++DEFAULT_API_KEY = "dev-key"
++
+ 
+ # [PÉDAGOGIE] TYPE `Settings` — regroupe un état cohérent et le contrat des opérations associées.
+ # [PÉDAGOGIE] THÉORIE — nommer ce type rend les invariants visibles et facilite les tests à la
+@@ -57,7 +61,20 @@ class Settings(BaseSettings):
+     incident_window_hours: int = 24  # fenêtre : on étiquette « panne » les 24 h AVANT un incident
+     # --- Réglages de l'API (modules 25-26) ---
+     # Clé attendue dans X-API-Key ; surcharger en prod via INDUSENSE_API_KEY.
++    # CONTROLE 1 (STRIDE: Spoofing) — la cle par defaut est ecrite dans le depot,
++    # donc connue de tous. On refuse le demarrage si elle survit en production.
++    environment: str = "dev"
+     api_key: str = "dev-key"
++
++    @model_validator(mode="after")
++    def _refuser_cle_par_defaut_en_production(self) -> "Settings":
++        if self.environment == "production" and self.api_key == DEFAULT_API_KEY:
++            raise ValueError(
++                "INDUSENSE_API_KEY vaut encore la valeur par defaut alors que "
++                "INDUSENSE_ENVIRONMENT=production. Definir une vraie cle."
++            )
++        return self
++
+     decision_threshold: float = (
+         0.5  # seuil proba → décision « alerte »/« ok » (INDUSENSE_DECISION_THRESHOLD)
+     )

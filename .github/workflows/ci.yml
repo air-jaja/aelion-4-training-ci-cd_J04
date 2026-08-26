@@ -1,0 +1,76 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — .github/workflows/ci.yml
+# [PÉDAGOGIE] MODULE  — M23–M24 — qualité, intégration continue et reproductibilité
+# [PÉDAGOGIE] RÔLE    — Décrire la chaîne automatisée qui reconstruit l'environnement puis
+# [PÉDAGOGIE]           contrôle le dépôt.
+# [PÉDAGOGIE] THÉORIE — une CI transforme la définition de terminé en contrôles reproductibles
+# [PÉDAGOGIE]           • uv et le fichier de verrou rendent l'installation déterministe
+# [PÉDAGOGIE]           • lint, formatage et tests détectent des familles de défauts différentes
+# [PÉDAGOGIE] À VOIR  — Chaque étape doit produire une preuve lisible et arrêter la chaîne en cas
+# [PÉDAGOGIE]           d'échec.
+# [PÉDAGOGIE] PIÈGE   — Une CI verte ne prouve que les contrôles écrits ; elle ne remplace ni la
+# [PÉDAGOGIE]           revue ni les tests métier.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+# [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans l'interface.
+name: CI
+
+# [PÉDAGOGIE] DÉCLENCHEUR — limite précisément les événements qui créent une exécution.
+on:
+  # [PÉDAGOGIE] CLÉ `push` — ce champ déclaratif participe au contrat de configuration.
+  push:
+    # [PÉDAGOGIE] CLÉ `branches` — ce champ déclaratif participe au contrat de configuration.
+    branches: [main]
+  # [PÉDAGOGIE] CLÉ `pull_request` — ce champ déclaratif participe au contrat de configuration.
+  pull_request:
+
+# [PÉDAGOGIE] GRAPHE — chaque job est une unité isolée dont le statut contribue au verdict global.
+jobs:
+  # [PÉDAGOGIE] CLÉ `quality` — ce champ déclaratif participe au contrat de configuration.
+  quality:
+    # [PÉDAGOGIE] CLÉ `runs-on` — ce champ déclaratif participe au contrat de configuration.
+    runs-on: ubuntu-latest
+    # [PÉDAGOGIE] PROCÉDURE — l'ordre des étapes rend la reconstruction et les contrôles
+    # [PÉDAGOGIE] reproductibles.
+    steps:
+      # [PÉDAGOGIE] DÉPENDANCE CI — l'action est épinglée à une version majeure explicitement
+      # [PÉDAGOGIE] revue.
+      - uses: actions/checkout@v4
+      # [PÉDAGOGIE] DÉPENDANCE CI — l'action est épinglée à une version majeure explicitement
+      # [PÉDAGOGIE] revue.
+      - uses: actions/setup-python@v5
+        # [PÉDAGOGIE] PARAMÈTRES — ces valeurs configurent l'action sans cacher la décision dans
+        # [PÉDAGOGIE] un script externe.
+        with:
+          # [PÉDAGOGIE] CLÉ `python-version` — ce champ déclaratif participe au contrat de
+          # [PÉDAGOGIE] configuration.
+          python-version: "3.13"
+      # [PÉDAGOGIE] DÉPENDANCE CI — l'action est épinglée à une version majeure explicitement
+      # [PÉDAGOGIE] revue.
+      - uses: astral-sh/setup-uv@v3
+      # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
+      # [PÉDAGOGIE] l'interface.
+      - name: Install
+        # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
+        # [PÉDAGOGIE] porte le verdict.
+        run: uv sync --extra dev
+      # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
+      # [PÉDAGOGIE] l'interface.
+      - name: Lint
+        # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
+        # [PÉDAGOGIE] porte le verdict.
+        run: uv run ruff check .
+      # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
+      # [PÉDAGOGIE] l'interface.
+      - name: Format
+        # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
+        # [PÉDAGOGIE] porte le verdict.
+        run: uv run black --check .
+      # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
+      # [PÉDAGOGIE] l'interface.
+      - name: Tests
+        # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
+        # [PÉDAGOGIE] porte le verdict.
+        run: uv run pytest -q

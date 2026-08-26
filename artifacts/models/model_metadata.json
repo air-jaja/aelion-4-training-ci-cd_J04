@@ -1,0 +1,24 @@
+{
+  "created_at": "2026-06-29T08:04:33.025032+00:00",
+  "package_version": "0.1.0",
+  "random_seed": 42,
+  "target_col": "panne",
+  "features": [
+    "temperature",
+    "pressure_bar",
+    "temperature_lag1",
+    "temperature_lag3",
+    "temperature_lag6",
+    "temperature_roll3_mean",
+    "temperature_roll6_mean",
+    "pressure_bar_lag1",
+    "pressure_bar_lag3",
+    "pressure_bar_lag6",
+    "pressure_bar_roll3_mean",
+    "pressure_bar_roll6_mean"
+  ],
+  "n_train_rows": 1896,
+  "panne_rate": 0.1055,
+  "dataset": "data\\raw",
+  "rf_sha256": "f30a27281745feee04478e513b412b9135e97d6ebf13e6088121d2e35e9f6858"
+}

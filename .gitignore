@@ -1,0 +1,65 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — .gitignore
+# [PÉDAGOGIE] MODULE  — M23–M27 — hygiène des artefacts et reproductibilité
+# [PÉDAGOGIE] RÔLE    — Définir explicitement ce qui entre dans l'historique ou dans le contexte
+# [PÉDAGOGIE]           de construction.
+# [PÉDAGOGIE] THÉORIE — les sources et manifestes sont versionnés ; caches, secrets et sorties
+# [PÉDAGOGIE]           générées ne le sont pas
+# [PÉDAGOGIE]           • réduire le contexte Docker accélère le build et limite l'exposition
+# [PÉDAGOGIE]             accidentelle
+# [PÉDAGOGIE]           • des fins de ligne cohérentes évitent les différences artificielles entre
+# [PÉDAGOGIE]             systèmes
+# [PÉDAGOGIE] À VOIR  — git status et le contexte de build doivent rester courts, explicables et
+# [PÉDAGOGIE]           sans donnée sensible.
+# [PÉDAGOGIE] PIÈGE   — Ignorer un artefact ne l'efface pas de l'historique s'il a déjà été
+# [PÉDAGOGIE]           commité.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+.venv*/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+venv*/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+__pycache__/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+*.pyc
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+.pytest_cache/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+.ruff_cache/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+.env
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+dist/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+build/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+*.egg-info/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+!artifacts/models/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+!artifacts/models/.gitkeep
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+!artifacts/models/rf.joblib
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+!artifacts/models/model_metadata.json
+# HRA
+# MLFlow
+mlruns/
+

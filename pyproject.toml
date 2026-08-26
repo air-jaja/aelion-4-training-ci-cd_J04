@@ -1,0 +1,230 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — pyproject.toml
+# [PÉDAGOGIE] MODULE  — M23–M24 — paquet Python, environnement uv et outillage
+# [PÉDAGOGIE] RÔLE    — Centraliser l'identité du paquet, ses dépendances et les règles communes
+# [PÉDAGOGIE]           aux outils.
+# [PÉDAGOGIE] THÉORIE — pyproject.toml est une source déclarative ; uv matérialise cet état dans
+# [PÉDAGOGIE]           un environnement
+# [PÉDAGOGIE]           • le verrou sépare la demande de dépendances de leur résolution exacte
+# [PÉDAGOGIE]           • les extras évitent d'imposer les outils de développement au runtime
+# [PÉDAGOGIE]             minimal
+# [PÉDAGOGIE] À VOIR  — uv sync --frozen doit reproduire l'environnement sans réécrire le verrou.
+# [PÉDAGOGIE] PIÈGE   — Ajouter une dépendance sans mettre à jour puis valider le verrou crée un
+# [PÉDAGOGIE]           dépôt non reproductible.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+# =============================================================================
+# pyproject.toml — Fichier de configuration central du projet Python "InduSense"
+# -----------------------------------------------------------------------------
+# ROLE : c'est LA carte d'identite du projet. Un seul fichier qui regroupe :
+#   - comment construire/empaqueter le projet (section [build-system]) ;
+#   - les metadonnees (nom, version, version de Python requise) ;
+#   - la liste des dependances (bibliotheques necessaires) ;
+#   - la configuration des outils qualite (ruff, black, pytest).
+# C'est le standard moderne Python (remplace setup.py + plusieurs .cfg/.ini).
+# Format du fichier : TOML (commentaires avec # en debut ou fin de ligne).
+# Astuce : avec "uv", la commande `uv sync --extra dev` lit ce fichier
+#          pour installer toutes les dependances + le groupe "dev".
+# =============================================================================
+
+# --- [build-system] : comment "construire" (empaqueter) le projet -----------
+# Indique a pip/uv quel outil utiliser pour fabriquer le paquet installable.
+# [PÉDAGOGIE] SECTION — `[build-system]` regroupe des réglages lus par le même outil ou composant.
+[build-system]
+# "hatchling" est le moteur de build (il transforme le code source en paquet).
+# [PÉDAGOGIE] RÉGLAGE `requires` — valeur déclarative lue par l'outil associé à cette section.
+requires = ["hatchling"]
+# On precise explicitement le backend de build a appeler.
+# [PÉDAGOGIE] RÉGLAGE `build-backend` — valeur déclarative lue par l'outil associé à cette
+# [PÉDAGOGIE] section.
+build-backend = "hatchling.build"
+
+# --- [project] : metadonnees + dependances du projet ------------------------
+# [PÉDAGOGIE] SECTION — `[project]` regroupe des réglages lus par le même outil ou composant.
+[project]
+# Nom du paquet (tel qu'il apparaitra une fois installe).
+# [PÉDAGOGIE] RÉGLAGE `name` — valeur déclarative lue par l'outil associé à cette section.
+name = "indusense-sprint3-starter"
+# Version du projet (convention SemVer : MAJEUR.MINEUR.CORRECTIF).
+# [PÉDAGOGIE] RÉGLAGE `version` — valeur déclarative lue par l'outil associé à cette section.
+version = "0.1.0"
+# Courte description affichee, par exemple, sur un index de paquets.
+# [PÉDAGOGIE] RÉGLAGE `description` — valeur déclarative lue par l'outil associé à cette section.
+description = "Starter propre InduSense pour le Sprint 3 CISIA"
+# Version de Python IMPOSEE : au minimum 3.13, mais strictement avant 3.14.
+# => Tout le monde doit travailler avec Python 3.13 (reproductibilite).
+# [PÉDAGOGIE] RUNTIME — borne les versions Python avec lesquelles le projet est garanti.
+requires-python = ">=3.13,<3.14"
+# Dependances de PRODUCTION : indispensables pour faire tourner le projet.
+# [PÉDAGOGIE] DÉPENDANCES — le manifeste exprime les besoins ; uv.lock en fige la résolution
+# [PÉDAGOGIE] exacte.
+dependencies = [
+    # pandas : manipulation de tableaux de donnees (DataFrame), lecture CSV/TSV.
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "pandas>=2.2",
+    # numpy : calcul numerique rapide (tableaux, operations vectorielles).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "numpy>=2.0",
+    # scikit-learn : machine learning classique (entrainement de modeles, RF...).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "scikit-learn>=1.5",
+    # joblib : sauvegarde/chargement de modeles entraines (fichiers .joblib).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "joblib>=1.4",
+    # pydantic-settings : charge la configuration depuis l'environnement (.env).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "pydantic-settings>=2.3",
+    # typer : cree facilement une interface en ligne de commande (CLI).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "typer>=0.12",
+    # loguru : journalisation (logs) simple et lisible.
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "loguru>=0.7",
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "dvc>=3.67.1",
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "fastapi>=0.111",  # API web rapide + doc /docs auto (module 25)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "uvicorn[standard]>=0.30",  # serveur ASGI qui fait tourner l'API (module 25)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "python-multipart>=0.0.9",  # upload de fichiers pour /predict-image (module 25)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "prometheus-fastapi-instrumentator>=8.0.2",  # expose /metrics pour Prometheus (module 33)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "prefect>=3.7.6",  # orchestration du flow ingest→predict→store (modules 29-30)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "sqlalchemy>=2.0.51",  # accès base de données / upsert (module 30)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "psycopg[binary]>=3.3.4",  # pilote PostgreSQL (module 28/30)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "scipy>=1.18.0",  # tests statistiques pour le drift : KS (module 31)
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "evidently>=0.7.21",  # rapports de data drift (module 32)
+]
+
+# --- [project.optional-dependencies] : dependances OPTIONNELLES --------------
+# Groupes installables a la demande. Ici le groupe "dev" = outils de developpement
+# (non necessaires en production). On l'installe avec `uv sync --extra dev`.
+# [PÉDAGOGIE] SECTION — `[project.optional-dependencies]` regroupe des réglages lus par le même
+# [PÉDAGOGIE] outil ou composant.
+[project.optional-dependencies]
+# [PÉDAGOGIE] RÉGLAGE `dev` — valeur déclarative lue par l'outil associé à cette section.
+dev = [
+    # pytest : framework pour ecrire et lancer les tests automatiques.
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "pytest>=8.0",
+    # ruff : linter ultra-rapide (detecte erreurs/mauvaises pratiques de code).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "ruff>=0.5",
+    # black : formateur de code (met le code en forme automatiquement).
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "black>=24.0",
+    # pre-commit : lance ruff/black/etc. AVANT chaque commit git.
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "pre-commit>=3.7",
+
+    "ipykernel>=6.29",
+]
+# [PÉDAGOGIE] RÉGLAGE `mlops` — valeur déclarative lue par l'outil associé à cette section.
+mlops = [
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "dvc>=3.5",
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "mlflow>=2.14",
+]
+
+notebook = [
+    "jupyterlab>=4.2",
+    "ipykernel>=6.29",
+]
+
+# --- [project.scripts] : commande(s) en ligne de commande exposee(s) ---------
+# Cree une commande "indusense" qui appelle la fonction main() du module CLI.
+# Apres installation, taper `indusense` dans un terminal lancera ce point d'entree.
+# [PÉDAGOGIE] SECTION — `[project.scripts]` regroupe des réglages lus par le même outil ou
+# [PÉDAGOGIE] composant.
+[project.scripts]
+# [PÉDAGOGIE] RÉGLAGE `indusense` — valeur déclarative lue par l'outil associé à cette section.
+indusense = "indusense.cli:main"
+
+# --- [tool.hatch.build.targets.wheel] : ou trouver le code a empaqueter ------
+# Indique a hatchling que le code source du paquet se trouve dans src/indusense.
+# [PÉDAGOGIE] SECTION — `[tool.hatch.build.targets.wheel]` regroupe des réglages lus par le même
+# [PÉDAGOGIE] outil ou composant.
+[tool.hatch.build.targets.wheel]
+# [PÉDAGOGIE] RÉGLAGE `packages` — valeur déclarative lue par l'outil associé à cette section.
+packages = ["src/indusense"]
+
+# --- [tool.ruff] : configuration du linter ruff -----------------------------
+# [PÉDAGOGIE] SECTION — `[tool.ruff]` regroupe des réglages lus par le même outil ou composant.
+[tool.ruff]
+# Largeur de ligne maximale toleree (au-dela : avertissement de style).
+# [PÉDAGOGIE] STYLE — partage la même limite entre formateur, apprenants et CI.
+line-length = 100
+# Version de Python ciblee pour les regles d'analyse (ici 3.13).
+# [PÉDAGOGIE] RÉGLAGE `target-version` — valeur déclarative lue par l'outil associé à cette
+# [PÉDAGOGIE] section.
+target-version = "py313"
+# Dossiers a EXCLURE de l'analyse (environnements virtuels, dossiers de build).
+# [PÉDAGOGIE] RÉGLAGE `extend-exclude` — valeur déclarative lue par l'outil associé à cette
+# [PÉDAGOGIE] section.
+extend-exclude = [".venv*", "venv*", "dist", "build"]
+
+# --- [tool.ruff.lint] : quelles familles de regles ruff active-t-on ---------
+# [PÉDAGOGIE] SECTION — `[tool.ruff.lint]` regroupe des réglages lus par le même outil ou
+# [PÉDAGOGIE] composant.
+[tool.ruff.lint]
+# Regles activees :
+#   E = erreurs de style (pycodestyle), F = erreurs logiques (pyflakes),
+#   I = tri des imports (isort), UP = modernisation du code (pyupgrade),
+#   B = pieges courants (flake8-bugbear).
+# [PÉDAGOGIE] RÉGLAGE `select` — valeur déclarative lue par l'outil associé à cette section.
+select = ["E", "F", "I", "UP", "B"]
+# Regle volontairement IGNOREE : B008 (appel de fonction comme valeur par defaut),
+# car c'est un usage normal et recommande avec typer/FastAPI.
+# [PÉDAGOGIE] RÉGLAGE `ignore` — valeur déclarative lue par l'outil associé à cette section.
+ignore = ["B008"]
+
+# --- [tool.black] : configuration du formateur black ------------------------
+# [PÉDAGOGIE] SECTION — `[tool.black]` regroupe des réglages lus par le même outil ou composant.
+[tool.black]
+# Meme largeur de ligne que ruff (les deux outils restent coherents).
+# [PÉDAGOGIE] STYLE — partage la même limite entre formateur, apprenants et CI.
+line-length = 100
+
+# --- [tool.pytest.ini_options] : configuration des tests pytest -------------
+# [PÉDAGOGIE] SECTION — `[tool.pytest.ini_options]` regroupe des réglages lus par le même outil ou
+# [PÉDAGOGIE] composant.
+[tool.pytest.ini_options]
+# Dossier ou pytest cherchera les tests.
+# [PÉDAGOGIE] COLLECTE — évite qu'un exercice autonome soit exécuté accidentellement avec la suite
+# [PÉDAGOGIE] racine.
+testpaths = ["tests"]
+# Ajoute "src" au chemin d'import Python => les tests trouvent le code source.
+# [PÉDAGOGIE] RÉGLAGE `pythonpath` — valeur déclarative lue par l'outil associé à cette section.
+pythonpath = ["src"]
