@@ -160,7 +160,7 @@ async def lifespan(app: FastAPI):
         # ...et on prévient via un avertissement. Conséquence : /ready répondra
         # 503 (pas prêt) tant qu'aucun modèle n'est disponible. Démarrer malgré
         # tout permet par exemple aux sondes /health de fonctionner.
-        logger.warning("Aucun modèle — /ready renverra 503")
+        logger.warning("Aucun modèle — /ready renverra 503", exc)
     # `yield` = « le démarrage est terminé, l'application tourne maintenant ».
     # Tout ce qui serait écrit APRÈS ce yield s'exécuterait à l'arrêt (nettoyage,
     # fermeture de connexions…). Ici on n'a rien de spécial à faire à l'arrêt.

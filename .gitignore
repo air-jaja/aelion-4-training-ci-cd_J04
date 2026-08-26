@@ -62,4 +62,5 @@ build/
 # HRA
 # MLFlow
 mlruns/
-
+# Docker
+.buildx-cache*
