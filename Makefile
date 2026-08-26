@@ -46,6 +46,13 @@ install:
 # [PÉDAGOGIE] tabulée.
 test:
 	uv run pytest -q
+ 	uv run pytest -m "not smoke"
+
+test-smoke:      ## Suite reseau, apres docker compose up -d
+ 	uv run pytest -m smoke
+#
+test-all:        ## Tout, avec le detail des ignores
+ 	uv run pytest -rs
 
 # Cible "lint" : analyse la qualite du code avec ruff (detecte les problemes).
 # [PÉDAGOGIE] CIBLE `lint` — nomme une intention et ses éventuels prérequis avant la recette
@@ -106,3 +113,31 @@ ps:
 # [PÉDAGOGIE] tabulée.
 smoke:
 	curl -fsS http://localhost:8000/health && echo " OK"
+
+# =============================================================================
+# COMMANDES UTILES — a mettre dans le Makefile ou les fiches de jalon
+# =============================================================================
+#
+#   uv run pytest                       suite complete + recapitulatif
+#   uv run pytest -v                    une ligne par test : PASSED / FAILED / SKIPPED
+#   uv run pytest -m "not smoke"        sans Docker, rapide
+#   uv run pytest -m smoke              apres docker compose up -d
+#   uv run pytest -rs                   raison de CHAQUE test ignore
+#   uv run pytest --lf                  rejoue seulement les derniers echecs
+#   uv run pytest -k "image"            filtre par nom de test
+#   uv run pytest --tb=long             pile complete pour deboguer
+#
+# =============================================================================
+# CIBLES MAKEFILE SUGGEREES
+# =============================================================================
+#
+# test:            ## Suite rapide, sans Docker
+# 	uv run pytest -m "not smoke"
+#
+# test-smoke:      ## Suite reseau, apres docker compose up -d
+# 	uv run pytest -m smoke
+#
+# test-all:        ## Tout, avec le detail des ignores
+# 	uv run pytest -rs
+#
+# =============================================================================

@@ -229,6 +229,31 @@ testpaths = ["tests"]
 # [PÉDAGOGIE] RÉGLAGE `pythonpath` — valeur déclarative lue par l'outil associé à cette section.
 pythonpath = ["src"]
 
+# --- Options appliquees a CHAQUE execution -----------------------------------
+# On les met ici plutot que de les retaper : la commande reste `uv run pytest`,
+# et tout le monde voit la meme chose, y compris la CI.
+addopts = [
+    # Force la couleur meme quand pytest croit ne pas parler a un terminal.
+    # Sans ca, les couleurs disparaissent dans certains terminaux Windows.
+    "--color=yes",
+
+    # `-ra` : recapitulatif des issues NON reussies a la fin — ignores, echecs,
+    # erreurs — AVEC leur raison. Sans lui, un test ignore ne dit pas pourquoi.
+    # C'est l'option la plus utile du lot.
+    "-ra",
+
+    # Les 5 tests les plus lents. Utile pour reperer ce qui ralentit la salle.
+    "--durations=5",
+
+    # Arrete apres 3 echecs : au-dela, on corrige avant de relancer.
+    # A retirer en CI, ou l'on veut le tableau complet.
+    "--maxfail=3",
+
+    # N'affiche que la ligne d'assertion en echec, pas toute la pile.
+    # Passer a `--tb=long` ponctuellement pour deboguer.
+    "--tb=short",
+]
+
 # --- Marqueurs personnalises -------------------------------------------------
 # Sans cette declaration, pytest emet un PytestUnknownMarkWarning par test
 # marque. La declarer permet aussi de filtrer :
