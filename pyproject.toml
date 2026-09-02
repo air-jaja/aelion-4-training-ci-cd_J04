@@ -241,6 +241,7 @@ addopts = [
     # erreurs — AVEC leur raison. Sans lui, un test ignore ne dit pas pourquoi.
     # C'est l'option la plus utile du lot.
     "-ra",
+    "--recap=resume",
 
     # Les 5 tests les plus lents. Utile pour reperer ce qui ralentit la salle.
     "--durations=5",
@@ -252,6 +253,7 @@ addopts = [
     # N'affiche que la ligne d'assertion en echec, pas toute la pile.
     # Passer a `--tb=long` ponctuellement pour deboguer.
     "--tb=short",
+
 ]
 
 # --- Marqueurs personnalises -------------------------------------------------
