@@ -38,6 +38,7 @@ DEUX TAUX, A NE PAS CONFONDRE :
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 
 import pytest
@@ -213,3 +214,41 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
         tr.write("  Un test ignore ne prouve rien. Detail : pytest -rs\n", yellow=True)
     else:
         tr.write("\n  Taux d'execution : 100 % — tous les cas ont tourne.\n", green=True)
+
+
+# =============================================================================
+# NETTOYAGE DE FIN DE SESSION
+# =============================================================================
+
+
+# [PÉDAGOGIE] BLOC `pytest_unconfigure` — dernier hook appele par pytest, apres la fermeture
+# [PÉDAGOGIE] des flux de sortie. C'est le seul endroit ou l'on peut couper un logger qui
+# [PÉDAGOGIE] ecrirait APRES la fin de la session.
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config) -> None:
+    """Empeche Prefect d'ecrire dans un flux deja ferme.
+
+    A l'arret de son serveur temporaire, Prefect journalise « Stopping
+    temporary server ». Son handler `rich` tente alors d'ecrire sur stdout que
+    pytest a deja ferme, et le module `logging` affiche une trace
+    « --- Logging error --- » de vingt lignes.
+
+    Ce n'est PAS un echec de test : le message survient apres le verdict, et le
+    code retour de pytest reste 0. Mais il noie le recapitulatif et fait croire
+    a une erreur.
+
+    Deux mesures, dans cet ordre :
+      1. retirer les handlers des loggers Prefect ;
+      2. desactiver la remontee d'erreurs du module logging, qui est la
+         source de l'affichage « --- Logging error --- ».
+    """
+    for nom in list(logging.Logger.manager.loggerDict):
+        if nom.startswith("prefect"):
+            logging.getLogger(nom).handlers.clear()
+            logging.getLogger(nom).propagate = False
+
+    # `raiseExceptions = False` : le module logging avale silencieusement les
+    # erreurs de ses handlers, au lieu de les imprimer sur stderr. On ne le
+    # fait qu'ICI, en toute fin de session : pendant les tests, une erreur de
+    # logging doit rester visible.
+    logging.raiseExceptions = False

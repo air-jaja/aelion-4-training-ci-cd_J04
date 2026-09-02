@@ -227,7 +227,7 @@ line-length = 100
 testpaths = ["tests"]
 # Ajoute "src" au chemin d'import Python => les tests trouvent le code source.
 # [PÉDAGOGIE] RÉGLAGE `pythonpath` — valeur déclarative lue par l'outil associé à cette section.
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 
 # --- Options appliquees a CHAQUE execution -----------------------------------
 # On les met ici plutot que de les retaper : la commande reste `uv run pytest`,
